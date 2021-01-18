@@ -1,16 +1,13 @@
 # coding:utf-8
 
 import requests
-import itertools
 from bs4 import BeautifulSoup
 import os
 from ebooklib import epub
-import base64
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import asyncio
 import aiohttp
 import yomituki
-import bs4
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 dirn = os.getcwd()
@@ -21,7 +18,9 @@ paio = None
 # proxy = {'http': 'http://[::1]:10002', 'https': 'https://[::1]:10002'}
 # paio = 'http://[::1]:10002'
 fullruby = True
-threads = 2
+factory = BeautifulSoup('<b></b>', 'lxml')
+cookie = {'over18': 'yes'}
+threads = 8
 
 css = '''@namespace h "http://www.w3.org/1999/xhtml";
 body {
@@ -65,20 +64,50 @@ a[href]:hover {
 
 
 def getpage(link):
-    gethtml = requests.get(link, headers=hd, proxies=proxy, verify=False)
+    gethtml = requests.get(link, headers=hd, proxies=proxy, cookies=cookie, verify=False)
     return gethtml
+
+
+def gettag(word):
+    tags = []
+    while '〔' in word:
+        s = word.find('〔')
+        e = word.find('〕')
+        tags.append(word[s:e + 1])
+        word = word[e + 1:]
+    return tags
+
+
+def correct_point_ruby_as_bold(bs):
+    for ruby in bs.find_all('ruby'):
+        rt = ruby.find('rt').string.split()[0]
+        if rt in '・' * 100:
+            rep = factory.new_tag('b')
+            rep.string = ruby.find('rb').string.split()[0]
+            ruby.replace_with(rep)
 
 
 def build_page(content, url):
     page = BeautifulSoup(content, 'lxml')
-    subtitle = page.find('h2', class_="episode-title").get_text().replace('\n', '').replace('\t', '')
-    content = page.find('div', id="novelBoby", class_="text")
+    subtitle = page.find('p', class_="novel_subtitle").get_text()
+    content = page.find('div', id="novel_honbun", class_="novel_view")
+    correct_point_ruby_as_bold(content)
     if fullruby:
         content = yomituki.ruby_div(content)
     else:
         content = content.prettify()
-    html = '<html>\n<head>\n' + '<title>' + subtitle + '</title>\n</head>\n<body>\n<div>\n<h3>' + subtitle + '</h3>\n' + content + '</div>\n</body>\n</html>'
-    name = url.split('/')[-1]
+    append = page.find('div', id="novel_a", class_="novel_view")
+    if append is not None:
+        correct_point_ruby_as_bold(append)
+        if fullruby:
+            append = yomituki.ruby_div(append)
+        else:
+            append = append.prettify()
+        append = '<hr>' + append
+    else:
+        append = ''
+    html = '<html>\n<head>\n' + '<title>' + subtitle + '</title>\n</head>\n<body>\n<div>\n<h3>' + subtitle + '</h3>\n' + content + append + '</div>\n</body>\n</html>'
+    name = url.split('/')[-2]
     built_page = epub.EpubHtml(title=subtitle, file_name=name + '.xhtml', content=html, lang='ja_jp')
     return name, built_page
 
@@ -91,23 +120,13 @@ def build_section(sec):
 
 async def load_page(url, session, semaphore):
     async with semaphore:
-        async with session.get(url) as response:
+        async with session.get(url, proxy=paio) as response:
             content = await response.read()
-            # if b'<div class="dots-indicator" id="LoadingEpisode"></div>' in content:
-            #     c = content.decode()
-            #     offset1 = c.find("<script>\n        $('div#novelBoby').load('/novel/episode_body?episode=")
-            #     offset2 = c.find("', {\n            'episode' : ")
-            #     offset3 = c.find(",\n            'token' : '")
-            #     load_link = "https://www.alphapolis.co.jp" + c[offset1 + 42: offset2] + "&token="
-            #     print("[Debug]", load_link)
-            #     load_link += c[offset3 + 25: offset3 + 57]
-            #     async with session.get(load_link) as response2:
-            #         content = await response2.read()
-            print('[Coroutine] Fetch Task Finished for Link: ' + url)
+            print('[Coroutine] {0} Fetch Task Finished for Link: {1}'.format(response.status, url))
     return url, content
 
 
-class Novel_Alphapolis:
+class Novel_Syosetu:
     def __init__(self, novel_id):
         self.id = novel_id
         self.book = epub.EpubBook()
@@ -117,27 +136,32 @@ class Novel_Alphapolis:
 
     def get_meta(self):
         print('[Main Thread] Fetching Metadata...')
-        self.metapage_raw = getpage('https://www.alphapolis.co.jp/novel/' + self.id)
+        self.metapage_raw = getpage('https://novel18.syosetu.com/' + self.id + '/')
         self.metapage = BeautifulSoup(self.metapage_raw.content, 'lxml')
-        self.novel_title = self.metapage.find('h2', class_="title").string[2:]
-        self.author = self.metapage.find('div', class_='author').find('a').string
-        self.about = self.metapage.find('div', class_='abstract').prettify()
+        self.novel_title = self.metapage.find('title').get_text()
+        self.author = self.metapage.find('div', class_="novel_writername").get_text().split('：')[-1][:-1]
+        self.about = self.metapage.find("div", id="novel_ex").prettify()
         self.book.set_title(self.novel_title)
         self.book.add_author(self.author)
         self.book.add_metadata('DC', 'description', self.about)
+        try:
+            self.attention = self.metapage.find('div', class_="contents1").find('span', class_="attention").get_text()
+        except AttributeError:
+            self.attention = None
+
+    #        self.tag = gettag(self.metapage.find('div', class_="contents1").get_text())
 
     async def get_pages(self):
         print('[Main Thread] Fetching Pages...')
-        self.menu_raw = self.metapage.find('div', class_='episodes')
-        async with aiohttp.ClientSession(headers=hd) as session:
-            await session.get('https://www.alphapolis.co.jp/novel/' + self.id)
+        self.menu_raw = self.metapage.find('div', class_='index_box')
+        async with aiohttp.ClientSession(headers=hd, cookies=cookie) as session:
             tasks = []
             semaphore = asyncio.Semaphore(threads)
             for element in self.menu_raw:
                 try:
-                    if element.name == 'div':
+                    if element['class'] == ['novel_sublist2']:
                         t = element.find('a')
-                        url = 'https://www.alphapolis.co.jp' + t['href']
+                        url = 'https://novel18.syosetu.com' + t['href']
                         task = asyncio.ensure_future(load_page(url, session, semaphore))
                         tasks.append(task)
                 except TypeError:
@@ -151,20 +175,19 @@ class Novel_Alphapolis:
         self.menu = [['メニュー']]
         for element in self.menu_raw:
             try:
-                if element.name == 'div':
-                    url = 'https://www.alphapolis.co.jp' + element.find('a')['href']
-                    title = element.find('span', class_='title').get_text()
+                if element['class'] == ['novel_sublist2']:
+                    url = 'https://novel18.syosetu.com' + element.find('a')['href']
+                    title = element.find('a').string
                     filename, epub_page = build_page(self.fetch_pages[url], url)
                     self.book.add_item(epub_page)
                     self.book.spine.append(epub_page)
                     self.menu[-1].append(epub.Link(filename + '.xhtml', title, filename))
-                elif element.name == 'h3':
+                elif element['class'] == ['chapter_title']:
                     title = element.string
-                    if title:
-                        if self.menu[-1] == ['メニュー']:
-                            self.menu[-1] = [title]
-                        else:
-                            self.menu.append([title])
+                    if self.menu[-1] == ['メニュー']:
+                        self.menu[-1] = [title]
+                    else:
+                        self.menu.append([title])
             except TypeError:
                 pass
         self.book.toc = tuple([build_section(sec) for sec in self.menu])
@@ -187,7 +210,7 @@ class Novel_Alphapolis:
 
 if __name__ == '__main__':
     novel_id = input('[Initial] Input novel id here: ')
-    syo = Novel_Alphapolis(novel_id)
+    syo = Novel_Syosetu(novel_id)
     syo.get_meta()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(syo.get_pages())

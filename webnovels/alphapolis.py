@@ -1,16 +1,13 @@
 # coding:utf-8
 
 import requests
-import itertools
 from bs4 import BeautifulSoup
 import os
 from ebooklib import epub
-import base64
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import asyncio
 import aiohttp
-import yomituki
-import bs4
+from WebNovelCrawler.webnovels import yomituki
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 dirn = os.getcwd()
@@ -21,7 +18,7 @@ paio = None
 # proxy = {'http': 'http://[::1]:10002', 'https': 'https://[::1]:10002'}
 # paio = 'http://[::1]:10002'
 fullruby = True
-threads = 16
+threads = 2
 
 css = '''@namespace h "http://www.w3.org/1999/xhtml";
 body {
@@ -71,8 +68,8 @@ def getpage(link):
 
 def build_page(content, url):
     page = BeautifulSoup(content, 'lxml')
-    subtitle = page.find('p', class_="widget-episodeTitle js-vertical-composition-item").get_text()
-    content = page.find('div', class_="widget-episodeBody js-episode-body")
+    subtitle = page.find('h2', class_="episode-title").get_text().replace('\n', '').replace('\t', '')
+    content = page.find('div', id="novelBoby", class_="text")
     if fullruby:
         content = yomituki.ruby_div(content)
     else:
@@ -91,13 +88,23 @@ def build_section(sec):
 
 async def load_page(url, session, semaphore):
     async with semaphore:
-        async with session.get(url, proxy=paio) as response:
+        async with session.get(url) as response:
             content = await response.read()
+            # if b'<div class="dots-indicator" id="LoadingEpisode"></div>' in content:
+            #     c = content.decode()
+            #     offset1 = c.find("<script>\n        $('div#novelBoby').load('/novel/episode_body?episode=")
+            #     offset2 = c.find("', {\n            'episode' : ")
+            #     offset3 = c.find(",\n            'token' : '")
+            #     load_link = "https://www.alphapolis.co.jp" + c[offset1 + 42: offset2] + "&token="
+            #     print("[Debug]", load_link)
+            #     load_link += c[offset3 + 25: offset3 + 57]
+            #     async with session.get(load_link) as response2:
+            #         content = await response2.read()
             print('[Coroutine] Fetch Task Finished for Link: ' + url)
     return url, content
 
 
-class Novel_Kakuyomu:
+class Novel_Alphapolis:
     def __init__(self, novel_id):
         self.id = novel_id
         self.book = epub.EpubBook()
@@ -107,32 +114,27 @@ class Novel_Kakuyomu:
 
     def get_meta(self):
         print('[Main Thread] Fetching Metadata...')
-        self.metapage_raw = getpage('https://kakuyomu.jp/works/' + self.id)
+        self.metapage_raw = getpage('https://www.alphapolis.co.jp/novel/' + self.id)
         self.metapage = BeautifulSoup(self.metapage_raw.content, 'lxml')
-        self.novel_title = self.metapage.find('span', id='catchphrase-body').get_text()
-        self.author = self.metapage.find('span', id="catchphrase-authorLabel").get_text()
-        self.about = self.metapage.find("p", id="introduction",
-                                        class_="ui-truncateTextButton js-work-introduction").prettify()
-        try:
-            self.about += self.metapage.find("p",
-                                             class_="ui-truncateTextButton-restText test-introduction-rest-text").prettify()
-        except AttributeError:
-            pass
+        self.novel_title = self.metapage.find('h2', class_="title").string[2:]
+        self.author = self.metapage.find('div', class_='author').find('a').string
+        self.about = self.metapage.find('div', class_='abstract').prettify()
         self.book.set_title(self.novel_title)
         self.book.add_author(self.author)
         self.book.add_metadata('DC', 'description', self.about)
 
     async def get_pages(self):
         print('[Main Thread] Fetching Pages...')
-        self.menu_raw = self.metapage.find('ol', class_='widget-toc-items test-toc-items')
+        self.menu_raw = self.metapage.find('div', class_='episodes')
         async with aiohttp.ClientSession(headers=hd) as session:
+            await session.get('https://www.alphapolis.co.jp/novel/' + self.id)
             tasks = []
             semaphore = asyncio.Semaphore(threads)
             for element in self.menu_raw:
                 try:
-                    if element['class'] == ['widget-toc-episode']:
-                        t = element.find('a', class_='widget-toc-episode-episodeTitle')
-                        url = 'https://kakuyomu.jp' + t['href']
+                    if element.name == 'div':
+                        t = element.find('a')
+                        url = 'https://www.alphapolis.co.jp' + t['href']
                         task = asyncio.ensure_future(load_page(url, session, semaphore))
                         tasks.append(task)
                 except TypeError:
@@ -143,38 +145,32 @@ class Novel_Kakuyomu:
 
     def build_menu(self):
         print('[Main Thread] Building Menu...')
-        self.menu = [[epub.Section('目次'), []]]
+        self.menu = [['メニュー']]
         for element in self.menu_raw:
             try:
-                if element['class'] == ['widget-toc-episode']:
-                    url = 'https://kakuyomu.jp' + element.find('a', class_='widget-toc-episode-episodeTitle')['href']
-                    title = element.find('a', class_='widget-toc-episode-episodeTitle').find('span',
-                                                                                             class_='widget-toc-episode-titleLabel js-vertical-composition-item').string
+                if element.name == 'div':
+                    url = 'https://www.alphapolis.co.jp' + element.find('a')['href']
+                    title = element.find('span', class_='title').get_text()
                     filename, epub_page = build_page(self.fetch_pages[url], url)
                     self.book.add_item(epub_page)
                     self.book.spine.append(epub_page)
-                    try:
-                        self.menu[-1][-1][-1][-1].append(epub.Link(filename + '.xhtml', title, filename))
-                    except (TypeError, AttributeError, IndexError):
-                        self.menu[-1][-1].append(epub.Link(filename + '.xhtml', title, filename))
-                elif element['class'] == ['widget-toc-chapter', 'widget-toc-level1', 'js-vertical-composition-item']:
-                    title = element.find('span').string
-                    if self.menu[0][0].title == '目次':
-                        self.menu[0][0] = epub.Section(title)
-                    else:
-                        self.menu.append([epub.Section(title), []])
-                elif element['class'] == ['widget-toc-chapter', 'widget-toc-level2', 'js-vertical-composition-item']:
-                    title = element.find('span').string
-                    self.menu[-1][-1].append([epub.Section(title), []])
+                    self.menu[-1].append(epub.Link(filename + '.xhtml', title, filename))
+                elif element.name == 'h3':
+                    title = element.string
+                    if title:
+                        if self.menu[-1] == ['メニュー']:
+                            self.menu[-1] = [title]
+                        else:
+                            self.menu.append([title])
             except TypeError:
                 pass
-        self.book.toc = self.menu
+        self.book.toc = tuple([build_section(sec) for sec in self.menu])
 
     def post_process(self):
         self.book.add_item(epub.EpubNcx())
         self.book.add_item(epub.EpubNav())
         self.book.add_item(
-            epub.EpubItem(uid="style_nav", file_name="style/nav.css", media_type="text/css", content=css))
+                epub.EpubItem(uid="style_nav", file_name="style/nav.css", media_type="text/css", content=css))
 
     def build_epub(self):
         print('[Main Thread] Building Book...')
@@ -188,7 +184,7 @@ class Novel_Kakuyomu:
 
 if __name__ == '__main__':
     novel_id = input('[Initial] Input novel id here: ')
-    syo = Novel_Kakuyomu(novel_id)
+    syo = Novel_Alphapolis(novel_id)
     syo.get_meta()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(syo.get_pages())

@@ -1,5 +1,8 @@
-# WebNovelCrawler
+# Japanese Web Crawler 
 
+# Contributions 
+
+# Functionality
 A Python Novel Crawler &amp; Epub Builder using asyncio
 
 This program uses python's new asyncio package to fetch pages.

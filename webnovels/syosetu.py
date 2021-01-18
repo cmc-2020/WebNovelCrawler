@@ -1,16 +1,13 @@
 # coding:utf-8
 
 import requests
-import itertools
 from bs4 import BeautifulSoup
 import os
 from ebooklib import epub
-import base64
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import asyncio
 import aiohttp
 import yomituki
-import bs4
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 dirn = os.getcwd()
