@@ -1,10 +1,10 @@
 from flask import Flask
 app = Flask(__name__)
 
+
 @app.route('/')
 def hello_world():
-    return 'Hello, World!'
-
+    return 'こんにちは！'
 
 
 # run app: start with `python app.py` and open the link in your browser
