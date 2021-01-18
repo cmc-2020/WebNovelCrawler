@@ -1,14 +1,14 @@
-# Syosetsu Web Crawler
-from novel_crawlers.syosetu import *
+from flask import Flask
+app = Flask(__name__)
+
+@app.route('/')
+def hello_world():
+    return 'Hello, World!'
 
 
-if __name__ == '__main__':
-    novel_id = "n2921gf"
-    syo = Novel_Syosetu(novel_id)
-    syo.get_meta()
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(syo.get_pages())
-    loop.close()
-    syo.build_menu()
-    syo.post_process()
-    syo.build_epub()
+
+# run app: start with `python app.py` and open the link in your browser
+if __name__ == "__main__":
+
+    # This allows the program to be debugged in real time.
+    app.run(debug=True)
