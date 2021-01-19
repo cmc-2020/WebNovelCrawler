@@ -1,13 +1,10 @@
 # coding:utf-8
 
-import requests
+import requests,os,asyncio,aiohttp
 from bs4 import BeautifulSoup
-import os
 from ebooklib import epub
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-import asyncio
-import aiohttp
-import yomituki
+from WebNovelCrawler.auxillary_functions import yomituki
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 dirn = os.getcwd()
@@ -15,10 +12,10 @@ hd = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2486.0 Safari/537.36 Edge/13.10586'}
 proxy = {}
 paio = None
-# proxy = {'http': 'http://[::1]:10002', 'https': 'https://[::1]:10002'}
-# paio = 'http://[::1]:10002'
 fullruby = True
 factory = BeautifulSoup('<b></b>', 'lxml')
+
+#
 cookie = {'over18': 'yes'}
 threads = 8
 

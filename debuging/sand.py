@@ -1,7 +1,9 @@
-from novel_crawlers.syosetu import *
+from WebNovelCrawler.debuging.syosetu18 import *
+import asyncio
+
 
 def book_grab():
-    novel_id = "n2921gf"
+    novel_id = "n0649go"
     syo = Novel_Syosetu(novel_id)
     syo.get_meta()
     loop = asyncio.get_event_loop()

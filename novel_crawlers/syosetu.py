@@ -1,82 +1,44 @@
 # coding:utf-8
 
-import requests
+# Internet requests, scrapping, parsing
+import requests,asyncio,aiohttp
 from bs4 import BeautifulSoup
-import os
-from ebooklib import epub
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-import asyncio
-import aiohttp
-from WebNovelCrawler.novel_crawlers import yomituki
-
-
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+# Directory, copying files
+import os, shutil
+
+# Auxillary functions for styling
+from WebNovelCrawler.auxillary_functions import yomituki
+from WebNovelCrawler.auxillary_functions import format
+
+# Ebook modules
+from ebooklib import epub
+
 dirn = os.getcwd()
+
+# Pass requests through the browser
 hd = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2486.0 Safari/537.36 Edge/13.10586'}
+
 proxy = {}
 paio = None
-# proxy = {'http': 'http://[::1]:10002', 'https': 'https://[::1]:10002'}
-# paio = 'http://[::1]:10002'
 fullruby = True
 factory = BeautifulSoup('<b></b>', 'lxml')
-threads = 8
 
-css = '''@namespace h "http://www.w3.org/1999/xhtml";
-body {
-  display: block;
-  margin: 5pt;
-  page-break-before: always;
-  text-align: justify;
-}
-h1, h2, h3 {
-  font-weight: bold;
-  margin-bottom: 1em;
-  margin-left: 0;
-  margin-right: 0;
-  margin-top: 1em;
-}
-p {
-  margin-bottom: 1em;
-  margin-left: 0;
-  margin-right: 0;
-  margin-top: 1em;
-}
-a {
-  color: inherit;
-  text-decoration: inherit;
-  cursor: default;
-}
-a[href] {
-  color: blue;
-  text-decoration: none;
-  cursor: pointer;
-}
-a[href]:hover {
-  color: red;
-}
-.center {
-  text-align: center;
-}
-.cover {
-  height: 100%;
-}'''
+# Increase or decrease the download speed by adjusting the threads
+threads = 100
 
+# Allows access to syosetu
+cookie = {'over18': 'yes'}
 
 def getpage(link):
-    gethtml = requests.get(link, headers=hd, proxies=proxy, verify=False)
+    '''
+    This returns the page of the entered URL.
+    '''
+    gethtml = requests.get(link, headers=hd, proxies=proxy, cookies=cookie, verify=False)
     return gethtml
-
-
-def gettag(word):
-    tags = []
-    while '〔' in word:
-        s = word.find('〔')
-        e = word.find('〕')
-        tags.append(word[s:e + 1])
-        word = word[e + 1:]
-    return tags
-
 
 def correct_point_ruby_as_bold(bs):
     for ruby in bs.find_all('ruby'):
@@ -96,6 +58,7 @@ def build_page(content, url):
     else:
         content = content.prettify()
     append = page.find('div', id="novel_a", class_="novel_view")
+
     if append is not None:
         correct_point_ruby_as_bold(append)
         if fullruby:
@@ -147,8 +110,6 @@ class Novel_Syosetu:
         except AttributeError:
             self.attention = None
 
-    #        self.tag = gettag(self.metapage.find('div', class_="contents1").get_text())
-
     async def get_pages(self):
         print('[Main Thread] Fetching Pages...')
         self.menu_raw = self.metapage.find('div', class_='index_box')
@@ -162,7 +123,6 @@ class Novel_Syosetu:
                         url = 'https://ncode.syosetu.com' + t['href']
                         task = asyncio.ensure_future(load_page(url, session, semaphore))
                         tasks.append(task)
-                        print(task)
                 except TypeError:
                     pass
             scheduled = asyncio.gather(*tasks)
@@ -195,7 +155,7 @@ class Novel_Syosetu:
         self.book.add_item(epub.EpubNcx())
         self.book.add_item(epub.EpubNav())
         self.book.add_item(
-                epub.EpubItem(uid="style_nav", file_name="style/nav.css", media_type="text/css", content=css))
+                epub.EpubItem(uid="style_nav", file_name="style/nav.css", media_type="text/css", content=format.book_style()))
 
     def build_epub(self):
         print('[Main Thread] Building Book...')
@@ -203,6 +163,6 @@ class Novel_Syosetu:
             self.file_name = self.novel_title[:63]
         else:
             self.file_name = self.novel_title[:63]
-        epub.write_epub(dirn + '\\' + self.file_name + '.epub', self.book, {})
+        epub.write_epub(self.file_name + '.epub', self.book, {})
+        book=self.file_name + '.epub'
         print('[Main Thread] Finished. File saved.')
-

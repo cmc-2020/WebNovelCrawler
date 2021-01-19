@@ -7,7 +7,7 @@ from ebooklib import epub
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import asyncio
 import aiohttp
-from WebNovelCrawler.novel_crawlers import yomituki
+from WebNovelCrawler.auxillary_functions import yomituki
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 dirn = os.getcwd()
@@ -60,11 +60,9 @@ a[href]:hover {
   height: 100%;
 }'''
 
-
 def getpage(link):
     gethtml = requests.get(link, headers=hd, proxies=proxy, verify=False)
     return gethtml
-
 
 def build_page(content, url):
     page = BeautifulSoup(content, 'lxml')
@@ -79,12 +77,10 @@ def build_page(content, url):
     built_page = epub.EpubHtml(title=subtitle, file_name=name + '.xhtml', content=html, lang='ja_jp')
     return name, built_page
 
-
 def build_section(sec):
     head = epub.Section(sec[0])
     main = tuple(sec[1:])
     return head, main
-
 
 async def load_page(url, session, semaphore):
     async with semaphore:
@@ -181,7 +177,6 @@ class Novel_Kakuyomu:
             self.file_name = self.novel_title[:63]
         epub.write_epub(dirn + '\\' + self.file_name + '.epub', self.book, {})
         print('[Main Thread] Finished. File saved.')
-
 
 if __name__ == '__main__':
     novel_id = input('[Initial] Input novel id here: ')

@@ -7,16 +7,15 @@ from ebooklib import epub
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import asyncio
 import aiohttp
-from WebNovelCrawler.novel_crawlers import yomituki
+from WebNovelCrawler.auxillary_functions import yomituki
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 dirn = os.getcwd()
 hd = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2486.0 Safari/537.36 Edge/13.10586'}
 proxy = {}
 paio = None
-# proxy = {'http': 'http://[::1]:10002', 'https': 'https://[::1]:10002'}
-# paio = 'http://[::1]:10002'
 fullruby = True
 threads = 2
 
@@ -60,11 +59,9 @@ a[href]:hover {
   height: 100%;
 }'''
 
-
 def getpage(link):
     gethtml = requests.get(link, headers=hd, proxies=proxy, verify=False)
     return gethtml
-
 
 def build_page(content, url):
     page = BeautifulSoup(content, 'lxml')
@@ -79,30 +76,17 @@ def build_page(content, url):
     built_page = epub.EpubHtml(title=subtitle, file_name=name + '.xhtml', content=html, lang='ja_jp')
     return name, built_page
 
-
 def build_section(sec):
     head = epub.Section(sec[0])
     main = tuple(sec[1:])
     return head, main
 
-
 async def load_page(url, session, semaphore):
     async with semaphore:
         async with session.get(url) as response:
             content = await response.read()
-            # if b'<div class="dots-indicator" id="LoadingEpisode"></div>' in content:
-            #     c = content.decode()
-            #     offset1 = c.find("<script>\n        $('div#novelBoby').load('/novel/episode_body?episode=")
-            #     offset2 = c.find("', {\n            'episode' : ")
-            #     offset3 = c.find(",\n            'token' : '")
-            #     load_link = "https://www.alphapolis.co.jp" + c[offset1 + 42: offset2] + "&token="
-            #     print("[Debug]", load_link)
-            #     load_link += c[offset3 + 25: offset3 + 57]
-            #     async with session.get(load_link) as response2:
-            #         content = await response2.read()
             print('[Coroutine] Fetch Task Finished for Link: ' + url)
     return url, content
-
 
 class Novel_Alphapolis:
     def __init__(self, novel_id):
@@ -180,7 +164,6 @@ class Novel_Alphapolis:
             self.file_name = self.novel_title[:63]
         epub.write_epub(dirn + '\\' + self.file_name + '.epub', self.book, {})
         print('[Main Thread] Finished. File saved.')
-
 
 if __name__ == '__main__':
     novel_id = input('[Initial] Input novel id here: ')

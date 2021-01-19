@@ -65,7 +65,6 @@ def ruby_p(p):
     plain += '</p>'
     return plain
 
-
 def ruby_div(div):
     plain = '<div>'
     for i in div:
