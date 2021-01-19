@@ -86,7 +86,6 @@ def correct_point_ruby_as_bold(bs):
             rep.string = ruby.find('rb').string.split()[0]
             ruby.replace_with(rep)
 
-
 def build_page(content, url):
     page = BeautifulSoup(content, 'lxml')
     subtitle = page.find('p', class_="novel_subtitle").get_text()
@@ -116,7 +115,6 @@ def build_section(sec):
     head = epub.Section(sec[0])
     main = tuple(sec[1:])
     return head, main
-
 
 async def load_page(url, session, semaphore):
     async with semaphore:
@@ -164,6 +162,7 @@ class Novel_Syosetu:
                         url = 'https://ncode.syosetu.com' + t['href']
                         task = asyncio.ensure_future(load_page(url, session, semaphore))
                         tasks.append(task)
+                        print(task)
                 except TypeError:
                     pass
             scheduled = asyncio.gather(*tasks)
@@ -206,16 +205,4 @@ class Novel_Syosetu:
             self.file_name = self.novel_title[:63]
         epub.write_epub(dirn + '\\' + self.file_name + '.epub', self.book, {})
         print('[Main Thread] Finished. File saved.')
-
-if __name__ == '__main__':
-    novel_id = "n2921gf"
-    syo = Novel_Syosetu(novel_id)
-    syo.get_meta()
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(syo.get_pages())
-    loop.close()
-    syo.build_menu()
-    syo.post_process()
-    syo.build_epub()
-
 

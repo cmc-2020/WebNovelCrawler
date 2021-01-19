@@ -1,124 +1,33 @@
-/* Inspired by https://github.com/sahil-rajput/Candice-YourPersonalChatBot */
-
-* {
-  box-sizing: border-box;
-}
-
-.before::before, .after::after {
-  content: "\A";
-  white-space: pre;
-}
-
-#banner{
-  padding-top: 0%;
-  margin: 0%;
-  background-color:#1D9A62;
-  height: 4rem;
-}
-
-.bannerbox{
-  float: left;
-  box-sizing: border-box;
-  padding-top: 7px;
-  margin-left: 30px;
-}
-
-#title {
-  margin-left: 35%;
-  padding-bottom: 0.2em;
-  max-width: 30%;
-}
-
-h1 {
-  text-align: left;
-  font-weight: bold;
-  margin: 0px;
-  max-width: 30%;
-}
-
-#haupttext{
-  padding-left: 20%;
-  margin-top: 100px;
-}
-
-
-h2, h4{
-  font-family: monospace;
-  text-align: left;
-  font-weight: bold;
-}
-
-/* Set height of body and the document to 100% */
-html, body {
-  height: 100%;
-  margin: 0;
-  font-family: monospace;
-  font-size: 16px;
-}
-
-.box {
-  float:left;
-  width:50%;
-  box-sizing: border-box;
-}
-
-#chatbox {
-  margin-left: 10%;
-  margin-right: 10%;
-  min-width: 400px;
-  margin-top: 60px;
-}
-
-#userInput {
-  margin-left: auto;
-  margin-right: auto;
-  width: 40%;
-  margin-top: 60px;
-}
-
-#textInput {
-  width: 90%;
-  border: transparent;
-  border-bottom: 3px black;
-  font-family: monospace;
-  font-size: 1rem;
-}
-
-.userText {
-  color: black;
-  font-family: monospace;
-  font-size: 1rem;
-  text-align: right;
-  line-height: 30px;
-}
-
-.userText span {
-  background-color: #F8F4DC;
+ /* Website Banner */
+#banner {
   padding: 10px;
-  border-radius: 2px;
+  text-align:  center;
+  background: #1abc9c;
+  color: white;
+  font-size: 30px;
+  font-family:Arial;
 }
 
-.botText {
+ /* Navigation bar */
+.topnav {
   color: black;
-  font-family: monospace;
-  font-size: 17px;
-  text-align: left;
-  line-height: 30px;
-}
-
-.botText span {
-  background-color: #92E4BB;
   padding: 10px;
-  border-radius: 2px;
+  text-align: center;
+  text-decoration: none;
+  font-family:Arial;
+
+   /* Allows for Space between the Navigation elements */
+  display: flex;
+  justify-content: space-between;
+  }
+
+span {
+   /* Span Elements */
+  width: 100px;
+  height: 50px;
 }
 
-.boxed {
-  overflow:auto;
-  max-height: 500px;
-  margin-left: 1rem;
-  margin-right: 20%;
-  margin-top: 60px;
-  border: 2px solid rgb(223, 223, 223);
-  border-radius: 2px;
-  background-color: white;
+.progress
+{
+position:absolute;
 }
