@@ -1,3 +1,0 @@
-# Auxillary Functions
-
-----
