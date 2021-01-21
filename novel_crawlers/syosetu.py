@@ -86,6 +86,11 @@ async def load_page(url, session, semaphore):
             print('[Coroutine] Fetch Task Finished for Link: ' + url)
     return url, content
 
+def load_page(url, session):
+    with session.get(url, proxy=paio) as response:
+        content = response.read()
+        print('[Coroutine] Fetch Task Finished for Link: ' + url)
+    return url, content
 
 class Novel_Syosetu:
     def __init__(self, novel_id):
@@ -121,6 +126,7 @@ class Novel_Syosetu:
                     if element['class'] == ['novel_sublist2']:
                         t = element.find('a')
                         url = 'https://ncode.syosetu.com' + t['href']
+                        print(load_page(url, session))
                         task = asyncio.ensure_future(load_page(url, session, semaphore))
                         tasks.append(task)
                 except TypeError:

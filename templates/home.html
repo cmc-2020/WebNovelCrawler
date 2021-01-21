@@ -29,22 +29,32 @@
   <!-- Navigation Header -->
  <div class="topnav">
   <span> <a class="active" href="#home">Home</a> </span>
-  <span> <a class="active" href="#home">Version History</a> </span>
+  <span> <a class="active" href="#home">Version</a> </span>
   <span> <a class="active" href="#home">Report</a> </span>
-     <span> <a class="active" href="#home">Contact Me</a> </span>
+     <span> <a class="active" href="#home">Contact</a> </span>
 </div>
 
+<h2>Syosetu Name</h2>
 
- <!-- Google Progress Bar  -->
-  <div class="progress" style="width: 20%; margin-left: 1000px;">
+<form method="POST">
+  <input type="input" name="u"><br><br>
+  <input type="submit" value="Submit">
+</form>
+
+
+<h3 id="progress_book_title">Book title</h3>
+
+
+ <!-- Bootsrap Progress Bar  -->
+  <div class="progress">
 		<div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
+
+            <p>loading</p>
 			<span class="progress-bar-label">0%</span>
 		</div>
 	</div>
 </div>
 
-<p>これは私の仕事です。</p>
-<p>これは私の仕事です。</p>
  <!-- Js File -->
   <script src="{{url_for('static', filename='js/scripts.js')}}"></script>
 

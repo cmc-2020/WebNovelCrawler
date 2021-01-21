@@ -7,3 +7,7 @@ var source = new EventSource("/progress");
 			source.close()
 		}
 	}
+
+myFunction() {
+  document.getElementById("fname").value = "Johnny Bravo";
+}
