@@ -1,58 +1,95 @@
+#########################
+# Importing standard python modules
+#########################
+import time, os
 
-# Modules necessary for flask
-from flask import Flask, render_template, request, url_for, redirect, Response
+'''
+Checking to see if the necessary files are available. 
+If one is missing or was renamed, then an error occurs.
+'''
 
-# Import of Novel Crawlers
-from novel_crawlers.syosetu import *
+#########################
+# Importing custom modules
+#########################
+try:
+    from novel_crawlers.syosetu import syosetu_book_grab
+    from auxillary_functions import custom_functions
+except:
+      raise SystemExit("Custom modules could not be imported.")
 
-# Standard python modules
-import time
+# Doing the core file check
+aux,novel="auxillary_functions","novel_crawlers"
+core_files=f"{aux}/custom_functions.py",f"{aux}/yomituki.py",\
+           f"{novel}/alphapolis.py",f"{novel}/kakuyomu.py",f"{novel}/syosetu.py"
 
-def book_grab():
-    novel_id = "n0649go"
-    syo = Novel_Syosetu(novel_id)
-    syo.get_meta()
-    loop = asyncio.get_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(syo.get_pages())
-    loop.close()
-    syo.build_menu()
-    syo.post_process()
-    syo.build_epub()
+# if the check fails, then the missing files will be displayed.
+core_files_available=custom_functions.system_check(core_files)
+if core_files_available[0]==True: pass
+else:
+    print("The programm could not be started because the core files are missing:\n")
+    for file in core_files_available[1]:
+        print(file)
 
-app = Flask(__name__)
-@app.route("/")
-def home():
+#########################
+# Importing pip modules
+#########################
+try:
+    import aiohttp,bs4,ebooklib,pykakasi
+except Exception as error:
+    print(error)
+    raise SystemExit
 
-    return render_template("home.html",
-                           message="hey")
+def placeholder():
+    print("This function is currently not available")
+    input()
 
-@app.route("/",methods=["POST"])
-def post():
-    text=request.form["u"]
-    try:
-        book_grab()
-    except Exception as error:
-        print(error)
-    return render_template("home.html")
+#########################
+# The Main Menu Function
+#########################
+def run_program():
+     menu_option = {"Version History":placeholder,
+                    "License and Contribution":placeholder,
+                    "Programm Documentation":placeholder,
+                    "Syosetu": syosetu_book_grab,
+                    "Kakuyomu":placeholder,
+                    "Alphapolis":placeholder}
 
-# Generates the progress of the books loading time
-@app.route('/progress')
-def progress():
+     invalid_option = "An error has occurred. Press enter to return to the main menu"
 
-    def generate():
-        x = 100
+     while True:
+         while True:
+            banner = "Web Novel Cralwer Version 1.0", "Main Menu"
+            for word in banner:
+                print(word.center(40,"~"))
+            print("\n- The function names are not case-sensistive - \n")
+            for num, elem in enumerate(menu_option, start=1):
+                print(f'{num}: {elem}')
 
-        # yields the progress of x
-        yield "data:" + str(x) + "\n\n"
+            choice_str = input('\nPlease enter the name or number of the function: ').strip()
+            options_func_dict = menu_option.get(choice_str.title())
 
+            if options_func_dict:
+                break
+            else:
+                try:
+                     choice_num = int(choice_str)
+                except Exception as error:
+                     print(error)
+                     input(invalid_option)
+                else:
+                     if 0 < choice_num and choice_num <= len(menu_option):
+                         func_list = list(menu_option.values())
+                         function_number = choice_num - 1
+                         options_func_dict = func_list[function_number]
+                         options_func_dict()
+                     else:
+                          input(invalid_option)
 
+################ Calling App.py ################
 
-    return Response(generate(), mimetype='text/event-stream')
-
-
-# run app: start with `python app.py` and open the link in your browser
 if __name__ == "__main__":
-
-
-    app.run(debug=True)
+     if core_files_available[0]==True:
+        try:
+            run_program()
+        except Exception as error:
+            print(error)

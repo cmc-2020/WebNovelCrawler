@@ -1,44 +1,45 @@
 # coding:utf-8
-
-# Internet requests, scrapping, parsing
-import requests,asyncio,aiohttp
-from bs4 import BeautifulSoup
+# Standard modules
+import requests, os, asyncio,sys,time
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-# Directory, copying files
-import os, shutil
-
-# Auxillary functions for styling
-from WebNovelCrawler.auxillary_functions import yomituki
-from WebNovelCrawler.auxillary_functions import format
-
-# Ebook modules
+# Modules via Pip
+import aiohttp
+from bs4 import BeautifulSoup
 from ebooklib import epub
 
-dirn = os.getcwd()
+# Custom Modules
+from auxillary_functions import yomituki
+from auxillary_functions import custom_functions
 
-# Pass requests through the browser
+# Browser warnings disabled
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+dirn = os.getcwd()
 hd = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2486.0 Safari/537.36 Edge/13.10586'}
-
 proxy = {}
 paio = None
-fullruby = True
+
+fullruby,furigana = True,False
 factory = BeautifulSoup('<b></b>', 'lxml')
 
-# Increase or decrease the download speed by adjusting the threads
-threads = 100
+# Increasing or decreasing changes the download speed
+threads = 80
 
-# Allows access to syosetu
-cookie = {'over18': 'yes'}
 
 def getpage(link):
-    '''
-    This returns the page of the entered URL.
-    '''
-    gethtml = requests.get(link, headers=hd, proxies=proxy, cookies=cookie, verify=False)
+    gethtml = requests.get(link, headers=hd, proxies=proxy, verify=False)
     return gethtml
+
+def gettag(word):
+    tags = []
+    while '〔' in word:
+        s = word.find('〔')
+        e = word.find('〕')
+        tags.append(word[s:e + 1])
+        word = word[e + 1:]
+    return tags
 
 def correct_point_ruby_as_bold(bs):
     for ruby in bs.find_all('ruby'):
@@ -52,11 +53,17 @@ def build_page(content, url):
     page = BeautifulSoup(content, 'lxml')
     subtitle = page.find('p', class_="novel_subtitle").get_text()
     content = page.find('div', id="novel_honbun", class_="novel_view")
-    correct_point_ruby_as_bold(content)
-    if fullruby:
-        content = yomituki.ruby_div(content)
+
+    # Enable/Disable Furigana
+    if furigana:
+        correct_point_ruby_as_bold(content)
+        if fullruby:
+            content = yomituki.ruby_div(content)
+        else:
+            content = content.prettify()
     else:
-        content = content.prettify()
+        content=content.prettify()
+
     append = page.find('div', id="novel_a", class_="novel_view")
 
     if append is not None:
@@ -73,24 +80,29 @@ def build_page(content, url):
     built_page = epub.EpubHtml(title=subtitle, file_name=name + '.xhtml', content=html, lang='ja_jp')
     return name, built_page
 
-
 def build_section(sec):
     head = epub.Section(sec[0])
     main = tuple(sec[1:])
     return head, main
 
+# List of URLS
+urlc=list()
+
+# Maximum number of URLS
 async def load_page(url, session, semaphore):
+
     async with semaphore:
         async with session.get(url, proxy=paio) as response:
             content = await response.read()
-            print('[Coroutine] Fetch Task Finished for Link: ' + url)
+            urlc.append(url)
+
+            #Progress bar
+            progress=len(urlc)/24
+            sys.stdout.write(str((custom_functions.update_progress(progress))))
+            time.sleep(0.1)
+
     return url, content
 
-def load_page(url, session):
-    with session.get(url, proxy=paio) as response:
-        content = response.read()
-        print('[Coroutine] Fetch Task Finished for Link: ' + url)
-    return url, content
 
 class Novel_Syosetu:
     def __init__(self, novel_id):
@@ -101,6 +113,7 @@ class Novel_Syosetu:
         self.book.spine = ['nav']
 
     def get_meta(self):
+
         print('[Main Thread] Fetching Metadata...')
         self.metapage_raw = getpage('https://ncode.syosetu.com/' + self.id + '/')
         self.metapage = BeautifulSoup(self.metapage_raw.content, 'lxml')
@@ -126,7 +139,6 @@ class Novel_Syosetu:
                     if element['class'] == ['novel_sublist2']:
                         t = element.find('a')
                         url = 'https://ncode.syosetu.com' + t['href']
-                        print(load_page(url, session))
                         task = asyncio.ensure_future(load_page(url, session, semaphore))
                         tasks.append(task)
                 except TypeError:
@@ -161,7 +173,7 @@ class Novel_Syosetu:
         self.book.add_item(epub.EpubNcx())
         self.book.add_item(epub.EpubNav())
         self.book.add_item(
-                epub.EpubItem(uid="style_nav", file_name="style/nav.css", media_type="text/css", content=format.book_style()))
+                epub.EpubItem(uid="style_nav", file_name="style/nav.css", media_type="text/css", content=custom_functions.book_style()))
 
     def build_epub(self):
         print('[Main Thread] Building Book...')
@@ -169,6 +181,20 @@ class Novel_Syosetu:
             self.file_name = self.novel_title[:63]
         else:
             self.file_name = self.novel_title[:63]
-        epub.write_epub(self.file_name + '.epub', self.book, {})
-        book=self.file_name + '.epub'
+
+        #Moves the created novels into the appropriate directory
+        novels_downloaded = os.getcwd().replace("novel_crawlers", "novels_downloaded/")
+        epub.write_epub(novels_downloaded + self.file_name + '.epub', self.book, {})
         print('[Main Thread] Finished. File saved.')
+
+def syosetu_book_grab():
+    novel_id = "n0649go"
+    syo = Novel_Syosetu(novel_id)
+    syo.get_meta()
+    loop = asyncio.get_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(syo.get_pages())
+    loop.close()
+    syo.build_menu()
+    syo.post_process()
+    syo.build_epub()

@@ -7,7 +7,7 @@ from ebooklib import epub
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import asyncio
 import aiohttp
-from WebNovelCrawler.auxillary_functions import yomituki
+from auxillary_functions import yomituki
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 dirn = os.getcwd()
@@ -179,7 +179,7 @@ class Novel_Kakuyomu:
         print('[Main Thread] Finished. File saved.')
 
 if __name__ == '__main__':
-    novel_id = input('[Initial] Input novel id here: ')
+    novel_id = input('[Initial] Input novels_downloaded id here: ')
     syo = Novel_Kakuyomu(novel_id)
     syo.get_meta()
     loop = asyncio.get_event_loop()
