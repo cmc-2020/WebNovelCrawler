@@ -1,6 +1,6 @@
 # coding:utf-8
 # Standard modules
-import requests, os, asyncio,sys,time
+import requests, os, asyncio,sys,time,shutil
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 # Modules via Pip
@@ -183,13 +183,26 @@ class Novel_Syosetu:
             self.file_name = self.novel_title[:63]
 
         #Moves the created novels into the appropriate directory
-        novels_downloaded = os.getcwd().replace("novel_crawlers", "novels_downloaded/")
-        epub.write_epub(novels_downloaded + self.file_name + '.epub', self.book, {})
+        print(dirn+"/novels")
+        epub.write_epub(dirn+"/novels_downloaded/"  + self.file_name + '.epub', self.book, {})
+
         print('[Main Thread] Finished. File saved.')
 
 def syosetu_book_grab():
-    novel_id = "n0649go"
-    syo = Novel_Syosetu(novel_id)
+    '''
+    This function is imported into the main module.
+    It is for grabbing books from Syosetu
+    '''
+    while True:
+            novel_id = input("Please enter the Link of the book that you would like to download: ")
+            code = novel_id.split("com/")
+            if r"/ncode.syosetu.com/" in novel_id and len(code)==2:
+                syo = Novel_Syosetu(code[1])
+                break
+            else:
+                print("You entered an invalid link. Please try again.\n")
+
+    # Book creation via asyncio
     syo.get_meta()
     loop = asyncio.get_event_loop()
     asyncio.set_event_loop(loop)

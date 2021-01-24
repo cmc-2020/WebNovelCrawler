@@ -175,3 +175,7 @@ def book_grab():
     syo.build_menu()
     syo.post_process()
     syo.build_epub()
+
+import os
+novels_downloaded = os.getcwd().replace("novel_crawlers", "novels_downloaded/")
+print(novels_downloaded)

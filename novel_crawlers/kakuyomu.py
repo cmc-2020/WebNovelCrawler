@@ -1,64 +1,30 @@
 # coding:utf-8
 
-import requests
-from bs4 import BeautifulSoup
-import os
-from ebooklib import epub
+import requests, os, asyncio,sys,time,shutil
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-import asyncio
-import aiohttp
-from auxillary_functions import yomituki
 
+# Modules via Pip
+import aiohttp
+from bs4 import BeautifulSoup
+from ebooklib import epub
+
+# Custom Modules
+from auxillary_functions import yomituki
+from auxillary_functions import custom_functions
+
+# Browser warnings disabled
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+
 dirn = os.getcwd()
 hd = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2486.0 Safari/537.36 Edge/13.10586'}
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                  'Chrome/46.0.2486.0 Safari/537.36 Edge/13.10586'}
 proxy = {}
 paio = None
-# proxy = {'http': 'http://[::1]:10002', 'https': 'https://[::1]:10002'}
-# paio = 'http://[::1]:10002'
-fullruby = True
-threads = 16
 
-css = '''@namespace h "http://www.w3.org/1999/xhtml";
-body {
-  display: block;
-  margin: 5pt;
-  page-break-before: always;
-  text-align: justify;
-}
-h1, h2, h3 {
-  font-weight: bold;
-  margin-bottom: 1em;
-  margin-left: 0;
-  margin-right: 0;
-  margin-top: 1em;
-}
-p {
-  margin-bottom: 1em;
-  margin-left: 0;
-  margin-right: 0;
-  margin-top: 1em;
-}
-a {
-  color: inherit;
-  text-decoration: inherit;
-  cursor: default;
-}
-a[href] {
-  color: blue;
-  text-decoration: none;
-  cursor: pointer;
-}
-a[href]:hover {
-  color: red;
-}
-.center {
-  text-align: center;
-}
-.cover {
-  height: 100%;
-}'''
+fullruby,furigana = True,False
+threads = 16
 
 def getpage(link):
     gethtml = requests.get(link, headers=hd, proxies=proxy, verify=False)
@@ -167,7 +133,7 @@ class Novel_Kakuyomu:
         self.book.add_item(epub.EpubNcx())
         self.book.add_item(epub.EpubNav())
         self.book.add_item(
-            epub.EpubItem(uid="style_nav", file_name="style/nav.css", media_type="text/css", content=css))
+            epub.EpubItem(uid="style_nav", file_name="style/nav.css", media_type="text/css", content=custom_functions.book_style()))
 
     def build_epub(self):
         print('[Main Thread] Building Book...')

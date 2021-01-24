@@ -43,13 +43,19 @@ def placeholder():
     print("This function is currently not available")
     input()
 
+def contribution_license():
+    with open ("documentation/LICENSE") as license:
+        for line in license:
+            print(line.strip())
+    input("Please press enter to return to the main menu:")
+
 #########################
 # The Main Menu Function
 #########################
 def run_program():
      menu_option = {"Version History":placeholder,
-                    "License and Contribution":placeholder,
-                    "Programm Documentation":placeholder,
+                    "Contribution and license":contribution_license,
+                    "Programm documentation":placeholder,
                     "Syosetu": syosetu_book_grab,
                     "Kakuyomu":placeholder,
                     "Alphapolis":placeholder}
@@ -58,7 +64,7 @@ def run_program():
 
      while True:
          while True:
-            banner = "Web Novel Cralwer Version 1.0", "Main Menu"
+            banner = "Japanese Web Novel Crawler Version 1.0", "Main Menu"
             for word in banner:
                 print(word.center(40,"~"))
             print("\n- The function names are not case-sensistive - \n")
